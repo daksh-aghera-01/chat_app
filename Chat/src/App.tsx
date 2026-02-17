@@ -31,11 +31,12 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState<string>("");
 
+  // 1. Handle Incoming Messages
   useEffect(() => {
     if (showUser) {
       socket.connect();
 
-      socket.on("receive_message", (data) => {
+      const handleReceiveMessage = (data: any) => {
         const { senderId, message } = data;
 
         setMessages((prev) => [
@@ -47,23 +48,36 @@ function App() {
             text: message,
           },
         ]);
-      });
-    }
+      };
 
-    return () => {
-      socket.off("receive_message");
-      if (!showUser) socket.disconnect();
-    };
+      socket.on("receive_message", handleReceiveMessage);
+
+      // Cleanup listener on unmount
+      return () => {
+        socket.off("receive_message", handleReceiveMessage);
+        // Note: We don't disconnect socket here to keep the connection alive while switching users
+      };
+    }
   }, [showUser, activeUserId]);
 
+  // 2. Handle Joining and LEAVING Rooms (The New Logic)
   useEffect(() => {
     if (showUser && activeUserId) {
+      // Create a unique Room ID based on both User IDs (sorted numerically)
+      const roomId = [showUser.id, activeUserId].sort((a, b) => a - b).join("-");
+
       const roomData = {
         myId: showUser.id,
         otherUserId: activeUserId,
       };
 
+      // Join the new room
       socket.emit("join_room", roomData);
+
+      // CLEANUP: This runs automatically when activeUserId changes (user switches chat)
+      return () => {
+        socket.emit("leave_room", { roomName: roomId });
+      };
     }
   }, [activeUserId, showUser]);
 
@@ -84,13 +98,17 @@ function App() {
 
   const handleSend = () => {
     if (!message || activeUserId === null || !showUser) return;
-    const roomId = [showUser.id, activeUserId].sort().join("-");
+    
+    // Ensure we generate the exact same Room ID string as in the useEffect
+    const roomId = [showUser.id, activeUserId].sort((a, b) => a - b).join("-");
+    
     const messageData = {
       roomId,
       message,
       senderId: showUser.id,
       senderName: showUser.name,
     };
+    
     socket.emit("send_message", messageData);
     setMessage("");
   };
@@ -168,7 +186,7 @@ function App() {
                     ) : (
                       <>
 
-                        <div className="overflow-scroll no-scrollbar h-50 p-3 flex flex-col">
+                        <div className="min-h-50 p-3 flex flex-col">
                           {messages
                             .filter(
                               (msg) =>
