@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 
 import { io } from "socket.io-client";
 
@@ -226,7 +226,7 @@ function App() {
                     ) : (
                       <>
                         {/* MESSAGE DISPLAY AREA */}
-                        <div className="min-h-[200px] p-3 flex flex-col">
+                        <div className="min-h-50 p-3 flex flex-col">
                           {messages
 
                             .filter(
@@ -256,7 +256,7 @@ function App() {
                           <input
                             value={message}
                             placeholder="Enter text"
-                            className="border flex-grow p-2 rounded-l"
+                            className="border grow p-2 rounded-l"
                             onChange={(e) => setMessage(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleSend()}
                           />
