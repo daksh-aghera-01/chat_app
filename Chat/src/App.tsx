@@ -1,128 +1,86 @@
 import { useState, useEffect } from "react";
-
 import { io } from "socket.io-client";
 
 interface User {
   id: number;
-
   name: string;
 }
 
 interface Message {
   senderId: number;
-
   receiverId: number;
-
   text: string;
 }
 
 const users: User[] = [
   { id: 101, name: "Kirtan" },
-
   { id: 102, name: "Daksh" },
-
   { id: 103, name: "Ayush Bhai" },
-
   { id: 104, name: "Gauraj Bhai" },
-
   { id: 105, name: "Rahul Bhai" },
 ];
-
-// Initialize socket outside component to prevent re-connections on render
-
 const socket = io("http://localhost:3001", {
-  autoConnect: false, // We will connect manually when user "logs in"
+  autoConnect: false,
 });
 
 function App() {
   const [selectedId, setSelectedId] = useState<number | "">("");
-
   const [showUser, setShowUser] = useState<User | null>(null);
-
   const [activeUserId, setActiveUserId] = useState<number | null>(null);
-
   const [messages, setMessages] = useState<Message[]>([]);
-
   const [message, setMessage] = useState<string>("");
-
-  // 1. Handle Socket Connection on Login
 
   useEffect(() => {
     if (showUser) {
       socket.connect();
-
       console.log("Socket connected for user:", showUser.name);
-
-      // Listen for incoming messages
-
       socket.on("receive_message", (data) => {
         const { senderId, message } = data;
 
         setMessages((prev) => [
           ...prev,
-
           {
             senderId: Number(senderId), // Ensure type consistency
-
-            // If I sent it, receiver is the active user. If I received it, receiver is ME.
-
             receiverId:
               Number(senderId) === showUser.id ? activeUserId! : showUser.id,
-
             text: message,
           },
         ]);
       });
     }
-
-    // Cleanup listener on logout/unmount
-
     return () => {
       socket.off("receive_message");
 
       if (!showUser) socket.disconnect();
     };
-  }, [showUser, activeUserId]); // Re-run if user changes
-
-  // 2. Handle Joining Room when Active User Changes
-
+  }, [showUser, activeUserId]);
   useEffect(() => {
     if (showUser && activeUserId) {
       const roomData = {
         myId: showUser.id,
-
         otherUserId: activeUserId,
       };
-
       socket.emit("join_room", roomData);
     }
   }, [activeUserId, showUser]);
 
   const handleClick = () => {
     const user = users.find((u) => u.id === selectedId);
-
     if (user) {
       setShowUser(user);
     }
   };
 
   const handleLogout = () => {
-    socket.disconnect(); // Disconnect socket
-
+    socket.disconnect();
     setShowUser(null);
-
     setSelectedId("");
-
     setActiveUserId(null);
-
-    setMessages([]); // Optional: Clear chats on logout
+    setMessages([]);
   };
 
   const handleSend = () => {
     if (!message || activeUserId === null || !showUser) return;
-
-    // Logic to determine Room ID (Must match backend logic)
-
     const roomId = [showUser.id, activeUserId].sort().join("-");
 
     const messageData = {
@@ -134,17 +92,7 @@ function App() {
 
       senderName: showUser.name,
     };
-
-    // Emit to server
-
     socket.emit("send_message", messageData);
-
-    // Note: We do NOT setMessages here manually.
-
-    // The server emits 'receive_message' back to the sender too,
-
-    // so the listener in useEffect will handle the UI update.
-
     setMessage("");
   };
 
