@@ -14,17 +14,8 @@ const io = new Server(server, {
     },
 });
 
-let onlineUsers = {};
-
 io.on("connection", (socket) => {
     console.log(`${socket.id} user just connected`);
-
-    // User Login
-    socket.on("user_login", (userId) => {
-        onlineUsers[socket.id] = userId;
-        console.log(`User logged In: ${userId} (Socket: ${socket.id})`);
-        
-    })
 
     //Join Room
     socket.on("join_room", ({myId, otherUserId}) => {
@@ -52,9 +43,7 @@ io.on("connection", (socket) => {
     })
 
     socket.on("disconnect", () => {
-        console.log("User Dissconnected");
-        delete onlineUsers[socket.id];
-        io.emit("online_users_update", Object.values(onlineUsers));
+        console.log(`User Dissconnected: ${socket.id}`);
     })
 })
 
@@ -63,5 +52,3 @@ server.listen(PORT, () => {
     console.log(`Server Running on Port ${PORT}`);
     
 })
-
-
