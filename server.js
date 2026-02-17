@@ -30,6 +30,12 @@ io.on("connection", (socket) => {
         socket.emit("room_joined", { roomId: roomName });
     });
 
+    // Leave Room
+    socket.on("leave_room", ({roomName}) => {
+        socket.leave(roomName);
+        console.log(`User ${socket.id} left Room: ${roomName}`);
+    })
+
     // Send Message
     socket.on("send_message", (data) => {
         const { roomId, message, senderId, senderName } = data;
