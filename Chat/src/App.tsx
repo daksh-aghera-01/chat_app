@@ -186,7 +186,7 @@ function App() {
                     ) : (
                       <>
 
-                        <div className="min-h-50 p-3 flex flex-col">
+                        <div className="h-50 overflow-scroll no-scrollbar p-3 flex flex-col">
                           {messages
                             .filter(
                               (msg) =>
