@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { io } from "socket.io-client";
 
 interface User {
@@ -20,9 +20,8 @@ const users: User[] = [
   { id: 105, name: "Rahul Bhai" },
 ];
 
-// Initialize socket outside component to prevent re-connections on render
 const socket = io("http://localhost:3001", {
-  autoConnect: false, // We will connect manually when user "logs in"
+  autoConnect: false,
 });
 
 function App() {
@@ -32,43 +31,38 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState<string>("");
 
-  // 1. Handle Socket Connection on Login
   useEffect(() => {
     if (showUser) {
       socket.connect();
-      console.log("Socket connected for user:", showUser.name);
 
-      // Listen for incoming messages
       socket.on("receive_message", (data) => {
         const { senderId, message } = data;
-        
+
         setMessages((prev) => [
           ...prev,
           {
-            senderId: Number(senderId), // Ensure type consistency
-            // If I sent it, receiver is the active user. If I received it, receiver is ME.
-            receiverId: Number(senderId) === showUser.id ? activeUserId! : showUser.id,
+            senderId: Number(senderId),
+            receiverId:
+              Number(senderId) === showUser.id ? activeUserId! : showUser.id,
             text: message,
           },
         ]);
       });
     }
 
-    // Cleanup listener on logout/unmount
     return () => {
       socket.off("receive_message");
       if (!showUser) socket.disconnect();
     };
-  }, [showUser, activeUserId]); // Re-run if user changes
+  }, [showUser, activeUserId]);
 
-  // 2. Handle Joining Room when Active User Changes
   useEffect(() => {
     if (showUser && activeUserId) {
       const roomData = {
         myId: showUser.id,
         otherUserId: activeUserId,
       };
-      
+
       socket.emit("join_room", roomData);
     }
   }, [activeUserId, showUser]);
@@ -81,33 +75,23 @@ function App() {
   };
 
   const handleLogout = () => {
-    socket.disconnect(); // Disconnect socket
+    socket.disconnect();
     setShowUser(null);
     setSelectedId("");
     setActiveUserId(null);
-    setMessages([]); // Optional: Clear chats on logout
+    setMessages([]);
   };
 
   const handleSend = () => {
     if (!message || activeUserId === null || !showUser) return;
-
-    // Logic to determine Room ID (Must match backend logic)
     const roomId = [showUser.id, activeUserId].sort().join("-");
-
     const messageData = {
       roomId,
       message,
       senderId: showUser.id,
       senderName: showUser.name,
     };
-
-    // Emit to server
     socket.emit("send_message", messageData);
-
-    // Note: We do NOT setMessages here manually. 
-    // The server emits 'receive_message' back to the sender too, 
-    // so the listener in useEffect will handle the UI update.
-    
     setMessage("");
   };
 
@@ -121,7 +105,7 @@ function App() {
                 value={selectedId}
                 onChange={(e) =>
                   setSelectedId(
-                    e.target.value === "" ? "" : Number(e.target.value)
+                    e.target.value === "" ? "" : Number(e.target.value),
                   )
                 }
                 className="border p-2 rounded hover:cursor-pointer"
@@ -157,7 +141,7 @@ function App() {
               </div>
 
               <div className="mt-10 flex justify-center ">
-                {/* LEFT SIDE USERS */}
+
                 <div className="flex-col">
                   {users
                     .filter((user) => user.id !== showUser?.id)
@@ -168,18 +152,13 @@ function App() {
                           setActiveUserId(user.id);
                         }}
                         className={`mr-5 my-0.5 font-bold shadow-xl border py-4 px-6 rounded hover:bg-blue-200 hover:cursor-pointer
-        ${
-          activeUserId === user.id
-            ? "bg-blue-500 text-white"
-            : "bg-white"
-        }`}
+        ${activeUserId === user.id ? "bg-blue-500 text-white" : "bg-white"}`}
                       >
                         Id: {user.id} Name: {user.name}
                       </div>
                     ))}
                 </div>
 
-                {/* RIGHT SIDE CHAT */}
                 <div className="flex border w-[45%] rounded">
                   <div className="w-full content-end">
                     {activeUserId === null ? (
@@ -188,15 +167,15 @@ function App() {
                       </div>
                     ) : (
                       <>
-                        {/* MESSAGE DISPLAY AREA */}
-                        <div className="min-h-[200px] p-3 flex flex-col">
+
+                        <div className="min-h-50 p-3 flex flex-col">
                           {messages
                             .filter(
                               (msg) =>
                                 (msg.senderId === showUser.id &&
                                   msg.receiverId === activeUserId) ||
                                 (msg.senderId === activeUserId &&
-                                  msg.receiverId === showUser.id)
+                                  msg.receiverId === showUser.id),
                             )
                             .map((msg, index) => (
                               <div
@@ -212,21 +191,20 @@ function App() {
                             ))}
                         </div>
 
-                        {/* INPUT AREA */}
                         <div className="flex w-full p-2">
-                            <input
+                          <input
                             value={message}
                             placeholder="Enter text"
-                            className="border flex-grow p-2 rounded-l"
+                            className="border grow p-2 rounded-l"
                             onChange={(e) => setMessage(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                            />
-                            <button
+                            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                          />
+                          <button
                             className="rounded-r border bg-blue-400 text-white hover:bg-blue-500 hover:cursor-pointer px-4"
                             onClick={handleSend}
-                            >
+                          >
                             Send
-                            </button>
+                          </button>
                         </div>
                       </>
                     )}
